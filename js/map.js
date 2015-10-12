@@ -27,15 +27,21 @@ var locations = [
 	}
 
 ];
-
+ 
 // Load wikipedia data
 function loadData(marker) {
-	var $wikiElem = $('#wikipedia-links-'+marker.id);
-	$wikiElem.text("");
+	if(!marker.binded) {
+		var container = $('#wikiData'+marker.id);
+	    var inner = $("<ul id='wikipedia-links"+marker.id+"' data-bind='html: wikiData'></ul>");
+	    container.append(inner);
+		ko.applyBindings( { wikiData: marker.wikiData},  document.getElementById('wikipedia-links'+marker.id) );
+		marker.binded = true;
+    }
+
 	var wikiUrl = 'http://en.wikipedia.org/w/api.php?action=opensearch&search=' + marker.title +'&format=json&callback=wikiCallback';
 
     var wikiRequestTimeout = setTimeout(function(){
-        $wikiElem.text("failed to get Wikipedia resources");
+        marker.wikiData("failed to get Wikipedia resources");
     }, 8000);
 
     $.ajax({
@@ -46,24 +52,24 @@ function loadData(marker) {
             var articleList = response[1];
 
             if (articleList.length == 0) {
-            	$wikiElem.append('Sorry, no articles about this location in Wikipedia.');
+            	marker.wikiData('Sorry, no articles about this location in Wikipedia.');
             } else {
-
+				marker.wikiData("");
 	            for (var i = 0; i < articleList.length; i++) {
 	                var articleStr = articleList[i];
 	                var url = 'http://en.wikipedia.org/wiki/' + articleStr;
-	                $wikiElem.append('<li><a href="' + url + '">' + articleStr + '</a></li>');
+	                var nextLi = '<li><a href="' + url + '">' + articleStr + '</a></li>';
+	                marker.wikiData(marker.wikiData() + nextLi);
 	            };
 	        }
             clearTimeout(wikiRequestTimeout);
         }
     });
+
     return false;
 }; 
 
-
 function MapViewModel () {
-	
 	// Model initialization
 	var mapCanvas = document.getElementById('map');
 	var mapOptions = {
@@ -75,7 +81,7 @@ function MapViewModel () {
 	var map = new google.maps.Map(mapCanvas, mapOptions);
 	var markers = [];
 
-	// Adding map markers
+	// Adding map markers	
 	locations.forEach(function(point,i) {
 		var marker = new google.maps.Marker({
 		    position: {lat: point.lat, lng: point.lng},
@@ -84,6 +90,7 @@ function MapViewModel () {
 	  	}); 
 	  	marker.id = i;	
 	  	marker.active = ko.observable(false);
+	  	marker.wikiData = ko.observable('');
 
 	  	marker.cssClass = ko.pureComputed(function() {
         	return this.active() ? "active-location" : "not-active-location";
@@ -93,8 +100,8 @@ function MapViewModel () {
 
 	  	// Marker animation and infowindow 	
 
-	  	var contentString = '<div>'+marker.title+'</div>'+'<ul id="wikipedia-links-'+marker.id+'"></ul>';
-	  	
+	  	var contentString = '<div>'+marker.title+'</div>'+'<div id="wikiData'+marker.id+'"></div>';
+	  
 	  	marker.infowindow = new google.maps.InfoWindow({
 		    content: contentString
 		});
@@ -117,6 +124,7 @@ function MapViewModel () {
 	    		marker.infowindow.open(map, marker);
 	    		loadData(marker);
 	    		marker.active(true);
+	    		map.setCenter(marker.getPosition());
 	  		}
   		};
   		marker.addListener('click', marker.toggleBounce);
@@ -125,11 +133,9 @@ function MapViewModel () {
 	// Model properties
 	this.map  = map;
 	this.markers = ko.observable(markers);
-	
 	this.markersToShow = ko.observableArray(markers.slice());
-
 	this.searchRequest = ko.observable('');
-
+	
 
 	// Filtering
 	this.filter = function(){
@@ -140,6 +146,7 @@ function MapViewModel () {
 			var n = marker().title.toLowerCase().indexOf(searchRequest);
 			if (n == -1) {
 				marker().setVisible(false);
+				marker().infowindow.close();
 			} else {
 				marker().setVisible(true);
 				self.markersToShow.push(marker);
@@ -149,6 +156,28 @@ function MapViewModel () {
 
 };
 
-google.maps.event.addDomListener(window, 'load', function(){
+function initialize () {
 	ko.applyBindings(new MapViewModel());
-});
+};
+
+function loadScript() {
+  var script = document.createElement("script");
+  script.type = "text/javascript";
+  script.src = "http://maps.googleapis.com/maps/api/js?callback=initialize";
+  setTimeout(function () {
+        try{
+            if (!google || !google.maps) {
+            	console.log('try');
+                //This will Throw the error if 'google' is not defined
+            }
+        }
+        catch (e) {
+        	console.log('catch');
+        	var $mapBox = $('#map');
+        	$mapBox.append('<table><tbody><tr><td>Sorry, map cannot be loaded.</td></tr></tbody></table>');
+        }
+    }, 1000);
+  document.body.appendChild(script);
+}
+
+window.onload = loadScript;
