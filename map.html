@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>Neighborhood Map</title>
+		<link rel="stylesheet" href="css/map.css">
+	</head>
+	<body>
+		<div class="map">
+			<div class="tools" id="tools">
+				<div class="search">
+					<input data-bind="value: searchRequest" type="text" />
+					<div><p data-bind="click: filter">Filter</p></div>
+				</div>
+				<ul data-bind="foreach: markersToShow">
+					<li data-bind="text: title, click: toggleBounce, css: cssClass"></li>
+				</ul>
+			</div>
+			<div id="map"></div>			
+		</div>
+
+		<script src="https://maps.googleapis.com/maps/api/js"></script>
+		<script src='js/jquery-2.1.4.min.js'></script>
+		<script src='js/knockout-3.3.0.js'></script>
+		<script src="js/map.js"></script>
+	</body>
+</html>
